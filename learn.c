@@ -2,24 +2,41 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-typedef struct matrixObject{
-	int* matrix = NULL;
-	int columns = NULL;
-	int rows = NULL;
+typedef struct _matrixObject{
+	double** matrix;
+	int columns;
+	int rows;
 } matrixObject;
+
+matrixObject findInverse(matrixObject Mat);
+matrixObject readTrainingData(char* fileName);
 
 int main(int argc, char* argv[]){
 	int* matrix = readTrainingData("idfk");
 	
-		
+	return 0;	
+}
+void printMatrix(matrixObject Mat){
+	double** matrix = Mat.matrix;
+	int i = 0;
+
+	while(i < Mat.rows){
+		int j = 0;
+		while(j < Mat.columns){
+			printf("%f\t", matrix[i][j]);
+			j++;
+		}
+		printf("\n");
+		i++;
+	}
 }
 
-matrixObject* readTrainingData(char* fileName){
+matrixObject readTrainingData(char* fileName){
 	FILE* fp = fopen(fileName, "r");
-	int attributes= 0;
-	int sets = 0;
+	const int attributes= 0;
+	const int sets = 0;
 	
-	int matrix[sets][attributes] = NULL;
+	double matrix[sets][attributes] = NULL;
 
 	int i = 0;
 	while(i < sets){
@@ -42,16 +59,21 @@ matrixObject* readTrainingData(char* fileName){
 	return Mat;
 }
 
-void findInverse(matrixObject Mat){
+matrixObject findInverse(matrixObject Mat){
 
 	//gets data of matrix to RREF
 	int rows = Mat.rows;
 	int columns = Mat.columns;
-	int* original =Mat.matrix;
+	double** original =Mat.matrix;
 
 
 	//creates identity matrix
-	int* new[rows][columns];	
+	matrixObject newMatrix;
+	double new[rows][columns];	
+
+	newMatrix.matrix = new;
+	newMatrix.rows = rows;
+	newMatrix.columns = columns;
 	int i = 0;
 	while(i < rows){
 		int j = 0;
@@ -76,7 +98,7 @@ void findInverse(matrixObject Mat){
 	while(colIt < columns){ //while not done reducing all rows
 		int rowIt = colIt; //iterates through rows, but note that you only need to iterate thru specific rows tht correspond with unreduced cols
 		while(rowIt < rows){ //divides all elements in specific rows by the first element
-			int div = original[rowIt][0]; //gets the first element
+			double  div = original[rowIt][0]; //gets the first element
 			if(div == 0){ //need to 
 				//go thru each row until you find a nonzero
 				//add the div = 0 row to the div = nonzero
@@ -85,7 +107,7 @@ void findInverse(matrixObject Mat){
 				int idkIt = colIt;//this probably sets the iterator to iterate btwn all possible pivot cols until it finds the pivot col
 				int pivotRow = -1;
 				while(idkIt < rows){
-					int nnn = original[idkIt][colIt]; //gets first nonzero element in desired row
+					double nnn = original[idkIt][colIt]; //gets first nonzero element in desired row
 					if(nnn != 0){
 						pivotRow = idkIt;
 						break;
@@ -102,6 +124,8 @@ void findInverse(matrixObject Mat){
 				int lmaoIt = colIt; //begins with 1st element
 				while(lmaoIt < columns){
 					original[rowIt][lmaoIt] = original[rowIt][lmaoIt] + original[pivotRow][lmaoIt];
+					new[rowIt][lmaoIt] = new[rowIt][lmaoIt] + new[pivotRow][lmaoIt];
+
 					lmaoIt++;
 				}
 
@@ -112,38 +136,67 @@ void findInverse(matrixObject Mat){
 				//also perform the same operation on the "new" matrix
 				int colIt2 = 0;
 				while(colIt2 < columns){
-					int origNum = original[rowIt][colIt2];
+					double origNum = original[rowIt][colIt2];
 					original[rowIt][colIt2] = origNum /div;
 
-					int newNum = new[rowIt][colIt2];
+					double newNum = new[rowIt][colIt2];
 					new[rowIt][colIt2] = newNum / div;
 					colIt2++;
 				}
 				
+			printMatrix(Mat);
+			printMatrix(newMatrix);
+			printf("\n");
 			rowIt++;
 		}
-		//AT THIS POINT, ALL THE ROWS WILL HAVE A 1 IN THE TARGET COLUMN
+		//AT THIS POINT, original: ALL THE ROWS WILL HAVE A 1 IN THE TARGET COLUMN
+		//		new: 
 
 		//subtract the "pivot row" from the "non-pivot rows"
 		//how do we know what's a pivot row?
 		//the row that rowIt is currently on is a pivot row. 
-		//to clarify: only subtract from the non-pivot rows after the pivot row. 
-		
+		//to clarify: only subtract from the non-pivot rows after the pivot row. 		
+
 		int roroIt = colIt + 1; //this might cause array out of bounds at some point!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 		while(roroIt < rows){//iterates thru rows
 			int colcolIt = colIt;
 			while(colcolIt < columns){//goes thru each element in each row
 				original[roroIt][colcolIt] = original[roroIt][colcolIt] - original[colIt][colcolIt]; //this is shitty...but colIt = rowIt b4 iteration so it should work	
+				new[roroIt][colcolIt] = new[roroIt][colcolIt] - new[colIt][colcolIt]; 
 				colcolIt++;
 			}
 			roroIt++;
 		}
 		
 		colIt++;
+		printMatrix(Mat);
+		printMatrix(newMatrix);
 	}
-	//AT THIS POINT, IT SHOULD BE AN REF MATRIX WITH 
+	//AT THIS POINT, IT SHOULD BE AN REF MATRIX WITH 1s IN THE PIVOT POSITIONS 
 	
+	//OH SHIII IVE BEEN USING INTS NOT FLOATS HAHAHAHAH FIX THIS!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	int rowIt1 = 0;
+	colIt = 0; //reusing variable names :P they don't really serve the same purpose though
+			//also the prev line of code isn't necessary but w/e
+
+
+	while(rowIt1 < rows-1){//for each row except for the last
+		colIt = rowIt1 + 1;
+		while(colIt < columns){
+			double numInCol = original[rowIt1][colIt]; //gets element 
+			
+			int colIt3 = colIt; //idk how to express what's going on here...
+			while(colIt3 < columns){
+				original[rowIt1][colIt3] = original[rowIt1][colIt3] - (numInCol * original[colIt][colIt3]); //colIt is conveniently equal to the pivot row that you want to be subtracted!!
+				new[rowIt1][colIt3] = new[rowIt1][colIt3] - (numInCol * new[colIt][colIt3]);
+				colIt3++;
+			}
+			colIt++;
+		}
+		rowIt1++;
+	}
 	
+	return 0;
 
 }
 
