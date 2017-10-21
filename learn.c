@@ -9,16 +9,19 @@ typedef struct _matrixObject{
 } matrixObject;
 
 int main(int argc, char* argv[]);
-//matrixObject findInverse(matrixObject Mat);
+matrixObject* findInverse(matrixObject* Mat);
 matrixObject* trainingDataToMatrix(char* fileName);
 matrixObject* createIdentity(int size);
 void printMatrix(matrixObject* Mat);
 int findNonZeroRow(int col, matrixObject* Mat);
 
 int main(int argc, char* argv[]){
-	matrixObject* hi = createIdentity(3);
-	printMatrix(hi);
+	matrixObject* Mat = trainingDataToMatrix(argv[1]);
 
+	matrixObject* inv = findInverse(Mat);
+
+	printMatrix(inv);
+	
 	return 0;
 		
 }
@@ -60,7 +63,7 @@ matrixObject* createIdentity(int size){
 	
 }
 void printMatrix(matrixObject* Mat){
-	double** matrix = (*Mat).matrix;
+	double** matrix = Mat -> matrix;
 	int i = 0;
 
 	while(i < Mat -> rows){
@@ -77,11 +80,14 @@ void printMatrix(matrixObject* Mat){
 
 matrixObject* trainingDataToMatrix(char* fileName){
 	FILE* fp = fopen(fileName, "r");
-	const int attributes= 0;
-	const int sets = 0;
+	int attributes;
+	int sets;
+
+	fscanf(fp, "%d\n", &attributes);
+	fscanf(fp, "%d\n", &sets);
 	
 	matrixObject* Mat = (matrixObject*)malloc(sizeof(matrixObject));
-
+	double* prices = (double*)malloc(sizeof(double) * sets);
 
 	//creates empty matrix
 	double** matrix = (double**)malloc(sizeof(double*) * sets);	
@@ -95,14 +101,18 @@ matrixObject* trainingDataToMatrix(char* fileName){
 	while(i < sets){
 		int j = 0;
 		while(j < attributes){
-			fscanf(fp,"%lf", &matrix[i][j]); 
+			if(feof(fp)){
+				break;
+			}
+			fscanf(fp,"%lf,", &matrix[i][j]); 
 
 			j++;
 		}
+		if(feof(fp)){
+			break;
+		}
+		fscanf(fp, "%lf\n", &prices[i]);
 		i++;
-
-		char bum; //this scans the newline character
-		fscanf(fp, "%c", &bum);
 	}	
 	
 	//sets struct members
@@ -166,11 +176,12 @@ matrixObject* findInverse(matrixObject* Mat){
 	//unless that first number is 0
 	//subtract all of the elements in other rows by the elements in the first row
 	
-	int colIt = 0; //iterates thru columns
-	while(colIt < size){ //while not done reducing all rows
+	 //iterates thru columns
+	 int colIt;
+	for(colIt = 0; colIt < size; colIt++){ //while not done reducing all rows
 		int rowIt = colIt; //iterates through rows, but note that you only need to iterate thru specific rows tht correspond with unreduced cols
-		while(rowIt < size){ //divides all elements in specific rows by the first element
-			double  div = original[rowIt][0]; //gets the first element
+		for(rowIt = colIt; rowIt < size; rowIt++){ //divides all elements in specific rows by the first element
+			double  div = original[rowIt][colIt]; //gets the first element
 			if(div == 0){ //need to 
 				//go thru each row until you find a nonzero
 				//add the div = 0 row to the div = nonzero
@@ -194,7 +205,6 @@ matrixObject* findInverse(matrixObject* Mat){
 			printMatrix(Mat);
 			printMatrix(newMat);
 			printf("\n");
-			rowIt++;
 		}
 		//AT THIS POINT, original: ALL THE ROWS WILL HAVE A 1 IN THE TARGET COLUMN
 		//		new: 
@@ -211,28 +221,23 @@ matrixObject* findInverse(matrixObject* Mat){
 			addRows(newMat, roroIt, colIt, (double)-1);
 		}
 		
-		colIt++;
 		printMatrix(Mat);
 		printMatrix(newMat);
 	}
 	//AT THIS POINT, IT SHOULD BE AN REF MATRIX WITH 1s IN THE PIVOT POSITIONS 
 	
-	int rowIt1 = 0;
-
-
-	while(rowIt1 < size-1){//for each row except for the last
-		colIt = rowIt1 + 1;
-		while(colIt < size){
+	int rowIt1;
+	for(rowIt1 = 0;rowIt1 < size-1; rowIt1++){//for each row except for the last
+		for(colIt = rowIt1 + 1;colIt < size; colIt++){
 			double numInCol = original[rowIt1][colIt]; //gets element 
 			 //for each NONZERO column, SUBTRACT a corresponding pivot column until it becomes zero
 			 
 			addRows(Mat, rowIt1, colIt, (double)(-1 * numInCol));
 			addRows(newMat, rowIt1, colIt, (double)(-1 * numInCol));
 		}
-		rowIt1++;
 	}
 	
-	return 0;
+	return newMat;
 
 }
 
