@@ -8,22 +8,30 @@ typedef struct _matrixObject{
 	int rows;
 } matrixObject;
 
+typedef struct iHateTHIS{  //this is so I can return two matrices from one function
+	matrixObject* matObj;
+	matrixObject* vectorObj;
+} shittyReturn;
+
 int main(int argc, char* argv[]);
 matrixObject* findInverse(matrixObject* Mat);
-matrixObject* trainingDataToMatrix(char* fileName);
+shittyReturn* trainingDataToMatrix(char* fileName);
 matrixObject* createIdentity(int size);
 void printMatrix(matrixObject* Mat);
 int findNonZeroRow(int col, matrixObject* Mat);
+matrixObject* findTranspose(matrixObject* Mat);
+matrixObject* multiplyMatrices(matrixObject* Mat1, matrixObject* Mat2);
+matrixObject* findWeights(matrixObject* X, matrixObject* Y); //variable names are from the assignment instructions
 
 int main(int argc, char* argv[]){
-	matrixObject* Mat = trainingDataToMatrix(argv[1]);
+	//gets data from training file
+	shittyReturn* data = trainingDataToMatrix(argv[1]);
+	matrixObject* Mat = data -> matObj;
+	matrixObject* Vect = data -> vectorObj;
 
-	matrixObject* inv = findInverse(Mat);
-
-	printMatrix(inv);
+	matrixObject* Weights = findWeights(Mat, Vect);	
 	
-	return 0;
-		
+	return 0;	
 }
 
 matrixObject* createIdentity(int size){
@@ -78,7 +86,7 @@ void printMatrix(matrixObject* Mat){
 }
 
 
-matrixObject* trainingDataToMatrix(char* fileName){
+shittyReturn* trainingDataToMatrix(char* fileName){
 	FILE* fp = fopen(fileName, "r");
 	int attributes;
 	int sets;
@@ -86,11 +94,15 @@ matrixObject* trainingDataToMatrix(char* fileName){
 	fscanf(fp, "%d\n", &attributes);
 	fscanf(fp, "%d\n", &sets);
 	
-	matrixObject* Mat = (matrixObject*)malloc(sizeof(matrixObject));
-	double* prices = (double*)malloc(sizeof(double) * sets);
+	//creates empty column vector
+	double** prices = (double**)malloc(sizeof(double*) * sets);
+	int lol;
+	for(lol = 0; lol < 1; lol++){
+		prices[lol] = (double*)malloc(sizeof(double) * 1);
+	}//this is so extra i'm sorry 
 
 	//creates empty matrix
-	double** matrix = (double**)malloc(sizeof(double*) * sets);	
+	double** matrix =(double**)malloc(sizeof(double*) * sets);	
 	int i;
 	for(i = 0; i < sets; i++){
 		matrix[i] = (double*)malloc(sizeof(double) * attributes);
@@ -105,21 +117,33 @@ matrixObject* trainingDataToMatrix(char* fileName){
 				break;
 			}
 			fscanf(fp,"%lf,", &matrix[i][j]); 
-
 			j++;
 		}
 		if(feof(fp)){
 			break;
 		}
-		fscanf(fp, "%lf\n", &prices[i]);
+		fscanf(fp, "%lf\n", &prices[i][1]);
 		i++;
 	}	
 	
-	//sets struct members
-	Mat -> matrix = matrix;
-	Mat -> columns = attributes;
-	Mat -> rows = sets;
-	return Mat;
+	// create matObj and set members
+	matrixObject* matObj = (matrixObject*)malloc(sizeof(matrixObject));
+	matObj -> matrix = matrix;
+	matObj -> columns = attributes;
+	matObj -> rows = sets;
+
+	//create vectorObj and set members
+	matrixObject* vectorObj = (matrixObject*)malloc(sizeof(matrixObject));
+	vectorObj -> matrix = prices;
+	vectorObj -> rows = sets;
+	vectorObj -> columns = 1;
+
+	//puts matObj and vectorObj into shittyReturnImplementation
+	shittyReturn* shit = (shittyReturn*)malloc(sizeof(shittyReturn));
+	shit -> matObj = matObj;
+	shit -> vectorObj = vectorObj;
+	
+	return shit;
 }
 
 int findNonZeroRow(int col, matrixObject* Mat){//returns the first row below the current one that doesn't have zero in pivot position
@@ -240,5 +264,115 @@ matrixObject* findInverse(matrixObject* Mat){
 	return newMat;
 
 }
+
+matrixObject* findTranspose(matrixObject* Mat){
+	double** origMatrix = Mat -> matrix;
+	int origRows = Mat -> rows;
+	int origCols = Mat -> columns;
+	
+
+	//creates empty matrix w/ opposite dimensions
+	double** newMatrix = (double**)malloc(sizeof(double*) * origCols);
+	int i;
+	for(i = 0; i < origCols; i++){
+		newMatrix[i] = (double*)malloc(sizeof(double) * origRows);
+	}
+
+	//fills empty matrix
+	int j;
+	for(j = 0; j < origRows; j++){
+		int k;
+		for(k = 0; k < origCols; k++){
+			newMatrix[k][j] = origMatrix[j][k];
+		}
+	}
+
+	//create matrix struct and inititalizes members
+	matrixObject* newMat = (matrixObject*)malloc(sizeof(matrixObject));
+	newMat -> matrix = newMatrix;
+	newMat -> columns = origRows;
+	newMat -> rows = origCols;
+
+	return newMat;
+	
+}
+
+matrixObject* multiplyMatrices(matrixObject* Mat1, matrixObject* Mat2){
+	double** matrix1 = Mat1 -> matrix;
+	double** matrix2 = Mat2 -> matrix;
+
+	int rows1 = Mat1 -> rows;
+	int rows2 = Mat2 -> rows;
+	//int cols1 = Mat1 -> columns;  //in a properly formatted input, this should be the same as rows2
+	int cols2 = Mat2 -> columns;
+
+	//create the resulting matrix: dimensions are rows1 x cols2
+	double** newMatrix = (double**)malloc(sizeof(double*) * rows1);
+	int i;
+	for(i = 0; i < rows1; i++){
+		newMatrix[i] = (double*)malloc(sizeof(double) * cols2);
+	}
+
+	//multiplies and sets items in new matrix
+	int j;
+	for(j = 0; j < rows1; j++){
+		int k;
+		for(k = 0; k < cols2; k++){
+			int sum = 0;
+			int iter;
+			for(iter = 0; iter < rows2; iter++){
+				sum = matrix1[j][iter] + matrix2[iter][k];
+			}
+
+			newMatrix[j][k] = sum;
+		}
+	}
+
+	//creates new matrix struct and initializes members
+	matrixObject* newMat = (matrixObject*)malloc(sizeof(matrixObject));
+	newMat -> matrix = newMatrix;
+	newMat -> rows = rows1;
+	newMat -> columns = cols2;
+
+	return newMat;
+	
+}
+
+matrixObject* findWeights(matrixObject* X, matrixObject* Y){
+	matrixObject* transX = findTranspose(X);
+	matrixObject* transX_x_X = multiplyMatrices(transX, X);
+	matrixObject* inv = findInverse(transX_x_X);
+	matrixObject* inv_x_transX = multiplyMatrices(inv,transX);
+	matrixObject* inv_x_transX_x_Y = multiplyMatrices(inv_x_transX, Y);
+	//sorry about variable names
+
+	return inv_x_transX_x_Y;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
